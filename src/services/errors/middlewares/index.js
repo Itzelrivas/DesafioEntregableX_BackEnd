@@ -3,7 +3,6 @@ import NErrors from "../errors-enum.js";
 //Aqui son los mensajes que se muestran en la consola de PostMan
 export default (error, req, res, next) => {
     console.error("Error detectado entrando al Error Handler");
-    console.log("Error recibido:", error); // Agrega esta línea para imprimir el error
     console.log(error.cause);
     switch (error.code) {
         case NErrors.INVALID_TYPES_ERROR:

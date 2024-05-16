@@ -1,5 +1,7 @@
 import { emailByCartId } from "../models/users/usersData.js";
-import { getCartsService, createCartService, getCartPopService, addProductToCartService, deleteProductToCartService, deleteProductsCartService, updateCantProductsService, updateProductsCartService, addProductToCartBy_IdService, getCartPopBy_IdService, purchaseCartService } from "../services/carts.Service.js";;
+import { getCartsService, createCartService, getCartPopService, addProductToCartService, deleteProductToCartService, deleteProductsCartService, updateCantProductsService, updateProductsCartService, addProductToCartBy_IdService, getCartPopBy_IdService, purchaseCartService } from "../services/carts.Service.js";import CustomError from "../services/errors/CustomError.js";
+import NErrors from "../services/errors/errors-enum.js";
+import { searchCartErrorInfoESP } from "../services/errors/messages/cartsErrors.js";
 import { getProductIdService, getProduct_IdService } from "../services/products.Service.js";
 
 
@@ -32,7 +34,53 @@ export const createCartsController = async (request, response) => {
 }
 
 //Obtenemos un carrito con population
-export const getCarPopController = async (request, response) => {
+/*export const getCarPopController = async (request, response) => {
+    let cartId = request.params.cid;
+    cartId = parseInt(cartId)
+
+    // Manejo de errores
+    if (!cartId || typeof cartId !== 'number' || isNaN(cartId)) {
+        const error = CustomError.createError({
+            name: "Cart Search Error",
+            cause: searchCartErrorInfoESP(cartId),
+            message: "Error tratando de obtener un carrito mediante su id.",
+            code: NErrors.INVALID_TYPES_ERROR
+        });
+        throw error; // Lanza el error para que sea manejado por el middleware de errores
+    }
+
+    const searchCart = await getCartPopService(cartId);
+    if (!searchCart) {
+        return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`);
+    }
+    console.log(JSON.stringify(searchCart, null, '\t'));
+    return response.send(searchCart);    
+}*/
+
+//funciona el manejo de errores
+export const getCarPopController =  (request, response) => {
+    let cartId = request.params.cid;
+    cartId = parseInt(cartId)
+    //Manejo de errores
+    if (!cartId || typeof cartId !== 'number' || isNaN(cartId)) {
+        CustomError.createError({
+            name: "Cart Search Error",
+            cause: searchCartErrorInfoESP(cartId),
+            message: "Error tratando de obtener un carrito mediante su id.",
+            code: NErrors.INVALID_TYPES_ERROR
+        });
+    }
+
+    const searchCart = getCartPopService(cartId);
+    if (!searchCart) {
+        return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`);
+    }
+    console.log(JSON.stringify(searchCart, null, '\t'));
+    return response.send(searchCart);
+}
+
+//Funciona sin manejo de errores
+/*export const getCarPopController = async (request, response) => {
     try {
         let cartId = request.params.cid;
         cartId = parseInt(cartId)
@@ -46,46 +94,50 @@ export const getCarPopController = async (request, response) => {
         console.error("Ha surgido este error: " + error);
         return response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo mostrar el carrito con population.</h2>');
     }
-}
+}*/
 
 //Agregamos un producto específico a un carrito específico
-export const addProductToCartController = async (request, response) => {
-    try {
-        let cartId = request.params.cid;
-        let productId = request.params.pid;
-        cartId= parseInt(cartId)
-        productId = parseInt(productId)
+export const addProductToCartController = (request, response) => {
+    let cartId = request.params.cid;
+    let productId = request.params.pid;
+    cartId= parseInt(cartId)
+    productId = parseInt(productId)
 
-        // Verificar si el carrito existe
-        const cart = await getCartPopService(cartId);
-        if (!cart) {
-            return response.send(`El carrito con el id=${cartId} no existe.`);
-        }
-
-        // Verificar si el producto existe
-        const product = await getProductIdService(productId) 
-        if (!product) {
-            return response.send(`El producto con el id=${productId} no existe.`);
-        }
-
-        // Verificar si el producto ya está en el carrito
-        const existingProductIndex = cart.products.findIndex(item => item.product.toString() === product._id.toString());
-        if (existingProductIndex !== -1) {
-            // Si el producto ya está en el carrito, incrementar la cantidad
-            cart.products[existingProductIndex].quantity++;
-        } else {
-            // Si el producto no está en el carrito, agregarlo al carrito con cantidad 1
-            cart.products.push({ product: product._id, quantity: 1 });
-        }
-
-        // Actualizar el carrito en la base de datos
-        await addProductToCartService(cartId, productId)
-
-        return response.send(`Se ha agregado el producto con el id=${productId} al carrito con id=${cartId}`);
-    } catch (error) {
-        console.error("Ha surgido este error: " + error);
-        response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo agregar un producto al carrito.</h2>');
+    if (!cartId || typeof cartId !== 'number' || isNaN(cartId) || !productId || typeof productId !== 'number' || isNaN(productId)) {
+        CustomError.createError({
+            name: "Cart Search Error",
+            cause: searchCartErrorInfoESP(cartId),
+            message: "Error tratando de obtener un carrito mediante su id.",
+            code: NErrors.INVALID_TYPES_ERROR
+        });
     }
+
+    // Verificar si el carrito existe
+    const cart = getCartPopService(cartId);
+    if (!cart) {
+        return response.send(`El carrito con el id=${cartId} no existe.`);
+    }
+
+    // Verificar si el producto existe
+    const product = getProductIdService(productId) 
+    if (!product) {
+        return response.send(`El producto con el id=${productId} no existe.`);
+    }
+
+    // Verificar si el producto ya está en el carrito
+    const existingProductIndex = cart.products.findIndex(item => item.product.toString() === product._id.toString());
+    if (existingProductIndex !== -1) {
+        // Si el producto ya está en el carrito, incrementar la cantidad
+        cart.products[existingProductIndex].quantity++;
+    } else {
+        // Si el producto no está en el carrito, agregarlo al carrito con cantidad 1
+        cart.products.push({ product: product._id, quantity: 1 });
+    }
+
+    // Actualizar el carrito en la base de datos
+    addProductToCartService(cartId, productId)
+
+    return response.send(`Se ha agregado el producto con el id=${productId} al carrito con id=${cartId}`);
 }
 
 //Agregamos un producto específico al carrito del user logueado 

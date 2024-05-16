@@ -20,3 +20,21 @@ export const registerUserErrorInfoENG = (user) => {
         -> password: type String, received: ${user.password}
     `;
 }
+
+//Los parametros no estan completos al iniciar sesion 
+export const loginUserErrorInfoESP = (user) => {
+    return `Uno o más campos no estan llenados, o tienen datos no válidos.
+    Recuerda que tienes que llenar los siguientes datos:
+        -> email: type String, recibido: ${user.email}
+        -> contraseña: type String, recibido: ${user.password}
+    `;
+}
+
+export const loginUserErrorInfoENG = (user) => {
+    return `One or more fields are not filled in, or have invalid data.
+    Remember that you need to fill in the following data:
+        -> email: type String, received: ${user.email}
+        -> password: type String, received: ${user.password}
+    `;
+    
+}

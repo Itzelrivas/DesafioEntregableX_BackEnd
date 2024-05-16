@@ -2,7 +2,7 @@ import passport from 'passport';
 import { initializePassport } from '../services/passport.Service.js';
 //Errors
 import CustomError from '../services/errors/CustomError.js';
-import { registerUserErrorInfoESP } from '../services/errors/messages/usersErrors.js';
+import { loginUserErrorInfoESP, registerUserErrorInfoESP } from '../services/errors/messages/usersErrors.js';
 import NErrors from '../services/errors/errors-enum.js';
 import { verifyEmailService } from '../services/users.Service.js';
 
@@ -42,10 +42,8 @@ initializePassport()
 
 export const registerUser = (req, res, next) => {
     const { first_name, last_name, email, age, password } = req.body;
-    
-    // Verificar si los campos están completos
+    // Verificar si los campos no están completos para manejar el error
     if (!first_name || !last_name || !email || !age || !password) {
-        // Crear un error de usuario personalizado
         CustomError.createError({
             name: "User Register Error",
             cause: registerUserErrorInfoESP({ first_name, last_name, email, age, password }),
@@ -53,6 +51,7 @@ export const registerUser = (req, res, next) => {
             code: NErrors.INVALID_TYPES_ERROR
         });
     }
+
     passport.authenticate('register', { 
         failureRedirect: '/api/sessions/fail-register' 
     })(req, res, next); 
@@ -74,6 +73,17 @@ export const registerUser = (req, res, next) => {
 
 //Login del usuario con passport
 export const loginUser = (request, response, next) => { 
+    const { email, password } = request.body
+    // Verificar si los campos no están completos para manejar el error
+    if (!email || !password) {
+        CustomError.createError({
+            name: "User LogIn Error",
+            cause: loginUserErrorInfoESP({ email, password }),
+            message: "Error al intentar iniciar sesion.",
+            code: NErrors.INVALID_TYPES_ERROR
+        });
+    }
+
     passport.authenticate('login', (err, user, info) => {
         if (err) {
             return next(err);

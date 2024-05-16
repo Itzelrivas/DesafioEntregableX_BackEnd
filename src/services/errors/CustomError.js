@@ -9,3 +9,18 @@ export default class CustomError {
         throw error; //Esto es para que retorne el error
     }
 }
+
+/*class CustomErrorInstance extends Error {
+    constructor(name, cause, message, code) {
+        super(message);
+        this.name = name;
+        this.code = code;
+        this.cause = cause ? new Error(cause) : null;
+    }
+}
+
+export default class CustomError {
+    static createError({ name, cause, message, code = 1 }) {
+        return new CustomErrorInstance(name, cause, message, code);
+    }
+}*/

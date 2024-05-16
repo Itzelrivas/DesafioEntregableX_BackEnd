@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { addProductToCartBy_IdController, addProductToCartController, createCartsController, deleteProductToCartController, deleteProductsCartController, getCarPopController, getCartsController, purchaseCartController, updateCantProductsController, updateProductsCartController } from '../controllers/carts.Controller.js';
 import { userAuth } from '../../utils.js';
+//Manejo de errores
+import errorHandler from '../services/errors/middlewares/index.js'
 
 const router = Router();
 
@@ -33,5 +35,8 @@ router.put('/:cid', updateProductsCartController)
 
 //Ruta para crear el ticket y finalizar compra
 router.post('/:cid/purchase', purchaseCartController)
+
+//Middleware para el manejo de errores
+router.use(errorHandler);
 
 export default router; 
