@@ -1,7 +1,7 @@
 import { emailByCartId } from "../models/users/usersData.js";
 import { getCartsService, createCartService, getCartPopService, addProductToCartService, deleteProductToCartService, deleteProductsCartService, updateCantProductsService, updateProductsCartService, addProductToCartBy_IdService, getCartPopBy_IdService, purchaseCartService } from "../services/carts.Service.js";import CustomError from "../services/errors/CustomError.js";
 import NErrors from "../services/errors/errors-enum.js";
-import { searchCartErrorInfoESP } from "../services/errors/messages/cartsErrors.js";
+import { addProductCartErrorInfoESP, deleteProductCartErrorInfoESP, deleteProductsCartErrorInfoESP, getCartsErrorESP, searchCartErrorInfoESP, updateQuantityProdCartErrorInfoESP } from "../services/errors/messages/cartsErrors.js";
 import { getProductIdService, getProduct_IdService } from "../services/products.Service.js";
 
 
@@ -10,6 +10,12 @@ export const getCartsController = async (request, response) => {
     try {
         let carts = await getCartsService();
         if (!carts) {
+            CustomError.createError({
+                name: 'Get Carts Error',
+                cause: getCartsErrorESP(),
+                message: 'Error tratando de obtener los carts de la base de datos.',
+                code: NErrors.DATABASE_ERROR
+            })
             return response.status(404).send(`No hay carritos disponibles.`);
         }
         return response.send(carts);;
@@ -34,110 +40,83 @@ export const createCartsController = async (request, response) => {
 }
 
 //Obtenemos un carrito con population
-/*export const getCarPopController = async (request, response) => {
-    let cartId = request.params.cid;
+export const getCarPopController = async (request, response) => {
+    let cartId = request.params.cid
     cartId = parseInt(cartId)
+    try {
+        //Manejo de errores
+        if (!cartId || isNaN(cartId)) {
+            CustomError.createError({
+                name: 'Cart Search Error',
+                cause: searchCartErrorInfoESP(cartId),
+                message: 'Error tratando de obtener un carrito mediante su id.',
+                code: NErrors.INVALID_TYPES_ERROR
+            })
+        }
+    
+        const searchCart = await getCartPopService(cartId)
+        if (!searchCart) {
+            return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`)
+        }
 
-    // Manejo de errores
-    if (!cartId || typeof cartId !== 'number' || isNaN(cartId)) {
-        const error = CustomError.createError({
-            name: "Cart Search Error",
-            cause: searchCartErrorInfoESP(cartId),
-            message: "Error tratando de obtener un carrito mediante su id.",
-            code: NErrors.INVALID_TYPES_ERROR
-        });
-        throw error; // Lanza el error para que sea manejado por el middleware de errores
+        console.log(JSON.stringify(searchCart, null, '\t'))
+        return response.send(searchCart)
+    
+    } catch (error) {
+        console.error(error)
+        return response.status(500).send(`Ocurrió un error al buscar el carrito.`)
     }
-
-    const searchCart = await getCartPopService(cartId);
-    if (!searchCart) {
-        return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`);
-    }
-    console.log(JSON.stringify(searchCart, null, '\t'));
-    return response.send(searchCart);    
-}*/
-
-//funciona el manejo de errores
-export const getCarPopController =  (request, response) => {
-    let cartId = request.params.cid;
-    cartId = parseInt(cartId)
-    //Manejo de errores
-    if (!cartId || typeof cartId !== 'number' || isNaN(cartId)) {
-        CustomError.createError({
-            name: "Cart Search Error",
-            cause: searchCartErrorInfoESP(cartId),
-            message: "Error tratando de obtener un carrito mediante su id.",
-            code: NErrors.INVALID_TYPES_ERROR
-        });
-    }
-
-    const searchCart = getCartPopService(cartId);
-    if (!searchCart) {
-        return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`);
-    }
-    console.log(JSON.stringify(searchCart, null, '\t'));
-    return response.send(searchCart);
 }
 
-//Funciona sin manejo de errores
-/*export const getCarPopController = async (request, response) => {
-    try {
-        let cartId = request.params.cid;
-        cartId = parseInt(cartId)
-        const searchCart = await getCartPopService(cartId);
-        if (!searchCart) {
-            return response.status(404).send(`El carrito con id=${cartId} no fue encontrado`);
-        }
-        console.log(JSON.stringify(searchCart, null, '\t'));
-        return response.send(searchCart);
-    } catch (error) {
-        console.error("Ha surgido este error: " + error);
-        return response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo mostrar el carrito con population.</h2>');
-    }
-}*/
 
 //Agregamos un producto específico a un carrito específico
-export const addProductToCartController = (request, response) => {
+export const addProductToCartController = async (request, response) => {
     let cartId = request.params.cid;
     let productId = request.params.pid;
     cartId= parseInt(cartId)
     productId = parseInt(productId)
 
-    if (!cartId || typeof cartId !== 'number' || isNaN(cartId) || !productId || typeof productId !== 'number' || isNaN(productId)) {
-        CustomError.createError({
-            name: "Cart Search Error",
-            cause: searchCartErrorInfoESP(cartId),
-            message: "Error tratando de obtener un carrito mediante su id.",
-            code: NErrors.INVALID_TYPES_ERROR
-        });
+    try {
+        //Manejo de errores
+        if (!cartId || typeof cartId !== 'number' || isNaN(cartId) || !productId || typeof productId !== 'number' || isNaN(productId)) {
+            CustomError.createError({
+                name: "Add Product to Cart Error",
+                cause: addProductCartErrorInfoESP(cartId, productId),
+                message: "Error tratando de agregar un producto específico a un carrito.",
+                code: NErrors.INVALID_TYPES_ERROR
+            });
+        }
+    
+        // Verificar si el carrito existe
+        const cart = await getCartPopService(cartId);
+        if (!cart) {
+            return response.send(`El carrito con el id=${cartId} no existe.`);
+        }
+    
+        // Verificar si el producto existe
+        const product = await getProductIdService(productId) 
+        if (!product) {
+            return response.send(`El producto con el id=${productId} no existe.`);
+        }
+    
+        // Verificar si el producto ya está en el carrito
+        const existingProductIndex = cart.products.findIndex(item => item.product.toString() === product._id.toString());
+        if (existingProductIndex !== -1) {
+            // Si el producto ya está en el carrito, incrementar la cantidad
+            cart.products[existingProductIndex].quantity++;
+        } else {
+            // Si el producto no está en el carrito, agregarlo al carrito con cantidad 1
+            cart.products.push({ product: product._id, quantity: 1 });
+        }
+    
+        // Actualizar el carrito en la base de datos
+        await addProductToCartService(cartId, productId)
+    
+        return response.send(`Se ha agregado el producto con el id=${productId} al carrito con id=${cartId}`);
+    } catch (error) {
+        console.error(error)
+        return response.status(500).send(`Ocurrió un error al agregar un producto al carrito.`)
     }
-
-    // Verificar si el carrito existe
-    const cart = getCartPopService(cartId);
-    if (!cart) {
-        return response.send(`El carrito con el id=${cartId} no existe.`);
-    }
-
-    // Verificar si el producto existe
-    const product = getProductIdService(productId) 
-    if (!product) {
-        return response.send(`El producto con el id=${productId} no existe.`);
-    }
-
-    // Verificar si el producto ya está en el carrito
-    const existingProductIndex = cart.products.findIndex(item => item.product.toString() === product._id.toString());
-    if (existingProductIndex !== -1) {
-        // Si el producto ya está en el carrito, incrementar la cantidad
-        cart.products[existingProductIndex].quantity++;
-    } else {
-        // Si el producto no está en el carrito, agregarlo al carrito con cantidad 1
-        cart.products.push({ product: product._id, quantity: 1 });
-    }
-
-    // Actualizar el carrito en la base de datos
-    addProductToCartService(cartId, productId)
-
-    return response.send(`Se ha agregado el producto con el id=${productId} al carrito con id=${cartId}`);
 }
 
 //Agregamos un producto específico al carrito del user logueado 
@@ -183,13 +162,23 @@ export const addProductToCartBy_IdController = async (request, response) => {
     }
 }
 
-//Elimindamos un producto específico de un carrito
+//Eliminamos un producto específico de un carrito
 export const deleteProductToCartController = async (request, response) => {
+    let cartId = request.params.cid
+    let productId = request.params.pid
+    cartId = parseInt(cartId)
+    productId = parseInt(productId)
+
     try {
-        let cartId = request.params.cid
-        let productId = request.params.pid
-        cartId = parseInt(cartId)
-        productId = parseInt(productId)
+        //Manejamos errores
+        if (!cartId || typeof cartId !== 'number' || isNaN(cartId) || !productId || typeof productId !== 'number' || isNaN(productId)) {
+            CustomError.createError({
+                name: "Delete Product to Cart Error",
+                cause: deleteProductCartErrorInfoESP(cartId, productId),
+                message: "Error tratando de eliminar un producto específico a un carrito.",
+                code: NErrors.INVALID_TYPES_ERROR
+            });
+        }
 
         let idSearch = await getCartPopService(cartId);
         if (idSearch) {
@@ -208,40 +197,59 @@ export const deleteProductToCartController = async (request, response) => {
         return response.send({ msg: `El carrito con el id=${cartId} no existe.` })
         
     } catch (error) {
-        console.error("Ha surgido este error: " + error);
-        response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo eliminar un producto del carrito.</h2>');
+        console.error(error)
+        return response.status(500).send(`Ocurrió un error al eliminar un producto al carrito.`)
     }
 }
 
 //Elimina todos los productos de un carrito específico
 export const deleteProductsCartController = async (request, response) => {
+    let cartId = request.params.cid
+    cartId = parseInt(cartId)
     try {
-        let cartId = request.params.cid
-        cartId = parseInt(cartId)
-        
-            let idSearch = await getCartPopService(cartId);
-            if (idSearch) {
-                await deleteProductsCartService(cartId)
-            }
-            else {
-                return response.send(`Oh Oh, no puedes eliminar el carrito con el id=${cartId} porque no existe :(`)
-            }
-            return response.send(`Se han eliminado los productos del carrito con id=${cartId}`);
+        //Manejo de errores
+        if (!cartId || isNaN(cartId)) {
+            CustomError.createError({
+                name: 'Delete All the Cart´s Products Error',
+                cause: deleteProductsCartErrorInfoESP(cartId),
+                message: 'Error tratando de eliminar los productos de un carrito mediante su id.',
+                code: NErrors.INVALID_TYPES_ERROR
+            })
+        }
+
+        let idSearch = await getCartPopService(cartId);
+        if (idSearch) {
+            await deleteProductsCartService(cartId)
+        }
+        else {
+            return response.send(`Oh Oh, no puedes eliminar el carrito con el id=${cartId} porque no existe :(`)
+        }
+        return response.send(`Se han eliminado los productos del carrito con id=${cartId}`);
         
     } catch (error) {
-        console.error("Ha surgido este error: " + error)
-        response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo eliminar un producto del carrito.</h2>')
+        console.error(error)
+        return response.status(500).send(`Ocurrió un error al eliminar los productos del carrito.`)
     }
 }
 
 //Actualiza la cantidad que hay de un producto en un carrito específico
 export const updateCantProductsController = async (request, response) => {
+    let cartId = request.params.cid
+    cartId = parseInt(cartId)
+    let productId = request.params.pid
+    productId = parseInt(productId)
+    let newQuantity = request.body
+
     try {
-        let cartId = request.params.cid
-        cartId = parseInt(cartId)
-        let productId = request.params.pid
-        productId = parseInt(productId)
-        let newQuantity = request.body
+        //Manejamos el error
+        if (!cartId || typeof cartId !== 'number' || isNaN(cartId) || !productId || typeof productId !== 'number' || isNaN(productId) || !newQuantity || isNaN(newQuantity)) {
+            CustomError.createError({
+                name: "Update Quantity Product in the Cart Error",
+                cause: updateQuantityProdCartErrorInfoESP(cartId, productId, newQuantity),
+                message: "Error tratando de actualizar la cantidad de un producto específico que hay en un carrito.",
+                code: NErrors.INVALID_TYPES_ERROR
+            });
+        }
 
         const cart = await getCartPopService(cartId);
         if (!cart) {
@@ -269,8 +277,8 @@ export const updateCantProductsController = async (request, response) => {
             return response.send(`El carrito con el id=${cartId} esta vacío.`);
         }
     } catch (error) {
-        console.error("Ha surgido este error: " + error);
-        response.status(500).send(`<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo modificar la cantidad del prodructo con id=${product} del carrito con id=${cartId}.</h2>`);
+        console.error(error)
+        return response.status(500).send(`<h2>¡Oh oh! Ha surgido un error, por lo tanto, no se pudo modificar la cantidad del producto en el carrito.</h2>`);
     }
 }
 
@@ -279,9 +287,7 @@ export const updateProductsCartController = async (request, response) => {
     try {
         let cartId = parseInt(request.params.cid)
         let newProducts = request.body
-        //let carts = await getCartsService()
         const cart = await getCartPopService(cartId);
-        //carts.find(cart => cart.id === cartId)
         if (!cart) {
             return response.send(`El carrito con el id=${cartId} no existe.`);
         }

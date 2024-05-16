@@ -10,36 +10,6 @@ initializePassport()
 
 
 //Registro de usuario con passport
-/*export const registerUser = (req, res, next) => {
-    const { first_name, last_name, email, age, password } = req.body;
-    
-    // Verificar si los campos están completos
-    if (!first_name || !last_name || !email || !age || !password) {
-        // Crear un error de usuario personalizado
-        CustomError.createError({
-            name: "User Register Error",
-            cause: registerUserErrorInfoESP({ first_name, last_name, email, age, password }),
-            message: "error tratando de registrar un nuevo usuario",
-            code: NErrors.INVALID_TYPES_ERROR
-        });
-    }
-    passport.authenticate('register', { 
-        failureRedirect: '/api/sessions/fail-register' 
-    })(req, res, next); 
-
-    /*console.log("abc")
-    let verifyEmail = await verifyEmailService(email)
-    console.log("abc")
-    console.log(verifyEmail)
-    if(verifyEmail === null){
-        console.log("Error al registrar nuevo usuario.");
-        res.status(200).send({ status: 'noSuccess', message: "Usuario no creado porque el correo ya ha sido utilizado anteriormente :(" });
-    }*/
-    
-    //console.log("Registrando nuevo usuario.");
-    //res.status(200).send({ status: 'success', message: "Usuario creado de forma exitosa!!" });
-//};
-
 export const registerUser = (req, res, next) => {
     const { first_name, last_name, email, age, password } = req.body;
     // Verificar si los campos no están completos para manejar el error

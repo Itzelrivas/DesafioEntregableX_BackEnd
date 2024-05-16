@@ -2,6 +2,9 @@ import { deleteProductService, getProductIdService, getProduct_IdService, getPro
 import fs from 'fs';
 import { socketServer } from '../app.js';
 import __dirname from '../../utils.js';
+import CustomError from "../services/errors/CustomError.js";
+import NErrors from "../services/errors/errors-enum.js";
+import { createNewProductErrorInfoEsp, getProductsErrorESP, searchProductErrorInfoESP } from "../services/errors/messages/productsErrors.js";
 
 //Obtenemos los productos
 export const getProductsController = async (request, response) => {
@@ -9,29 +12,47 @@ export const getProductsController = async (request, response) => {
 		let products = await getProductsService()
 		if (!products) {
 			products = [];
+            //Manejamos el error
+            CustomError.createError({
+                name: "Get products Error",
+                cause: getProductsErrorESP(),
+                message: "Error al obtener los productos de la base de datos.",
+                code: NErrors.DATABASE_ERROR
+            });
+
 			response.send("Ooooh, parece que no hay productos disponibles.")
 		} else {
 			response.send(products)
 		}
 	} catch (error) {
 		console.error("Error al intentar acceder a los productos: " + error);
-		response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error.</h2>')
+		return response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error.</h2>')
 	}
 }
 
 //Obtenemos un producto mediante su id
 export const getProductIdController = async (request, response) => {
+    let productId = request.params.pid
+    productId = parseInt(productId)
     try {
-		let productId = request.params.pid
-        productId = parseInt(productId)
+		//Manejamos el error
+        if (!productId || isNaN(productId)) {
+            CustomError.createError({
+                name: 'Product Search Error',
+                cause: searchProductErrorInfoESP(productId),
+                message: 'Error tratando de obtener un producto mediante su id.',
+                code: NErrors.INVALID_TYPES_ERROR
+            })
+        }
+
 		const idSearch = await getProductIdService(productId)
 		if (idSearch) {
 			return response.send(idSearch)
 		}
 		return response.send({ msg: `El producto con el id=${productId} no existe.` })
 	} catch (error) {
-		console.error("Ha surgido este error: " + error)
-		response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo mostrar lo solicitado.</h2>')
+		console.error(error)
+		return response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo mostrar lo solicitado.</h2>')
 	}
 }
 
@@ -182,6 +203,7 @@ export const getProductsCategoryCont = async (request, response) => {
         response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error al ordenar los productos.</h2>');
     }
 }
+     
 
 //Obtenemos productos en tiempo real
 export const getProductsRTController = async (request, response) => {
@@ -249,6 +271,17 @@ export const newProductController = async (request, response) => {
                     fs.unlinkSync(file.path);
                 });
             }
+            
+            //Manejamos errores
+            if (!title || !description || !code || !price || !stock || !category || typeof title !== "string" || typeof description !== "string" || typeof code !== "string" || typeof price !== "number" || typeof stock !== "number" || typeof category !== "string") {
+                CustomError.createError({
+                    name: "Create New Product Error",
+                    cause: createNewProductErrorInfoEsp(title, description, code, price, stock, category),
+                    message: "Error al tratar de crear un nuevo producto.",
+                    code: NErrors.INVALID_TYPES_ERROR
+                });
+            }
+
             return response.status(400).send({ status: "error", msg: "¡Oh oh! No se han completado todos los campos requeridos." });
         }
 
@@ -276,8 +309,8 @@ export const newProductController = async (request, response) => {
 
         return response.send({ status: "Success", msg: `Se ha creado un nuevo producto exitosamente con id=${idNewProduct} :)` });
 	} catch (error) {
-		console.error("Ha surgido este error: " + error);
-		response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo crear un nuevo producto.</h2>');
+		console.error(error);
+		return response.status(500).send('<h2 style="color: red">¡Oh oh! Ha surgido un error, por lo tanto, no se pudo crear un nuevo producto.</h2>');
 	}
 }
 

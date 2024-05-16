@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { deleteProductController, getProductIdController, getProduct_IdController, getProductsController, newProductController, updateProductController } from '../controllers/products.Controller.js';
 import { auth, uploader } from '../../utils.js';
+import errorHandler from '../services/errors/middlewares/index.js'
 
 const router = Router();
 
@@ -21,5 +22,8 @@ router.put('/:pid', auth, updateProductController)
 
 //Ruta para eliminar un producto. Funciona con Moongose :)
 router.delete('/:pid', auth, deleteProductController)
+
+//Middleware para el manejo de errores
+router.use(errorHandler);
 
 export default router;
